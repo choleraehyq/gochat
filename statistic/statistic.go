@@ -1,26 +1,25 @@
 package statistic
 
 import (
-	"github.com/choleraehyq/gochat/safemap"
+	"github.com/choleraehyq/gochat/utils/safemap"
 	"net"
 	"time"
 	"sync/atomic"
 )
 
 var (
-	ConnNum uint32 = 0
-	//uid --> conn
-	UidConnMap *safemap.Safemap = safemap.Newsafemap()
 	//conn --> timestamp
 	TimeStampMap *safemap.Safemap = safemap.Newsafemap()
-	TryConnect uint32 = 0
+	NameConnMap *safemap.Safemap = safemap.Newsafemap()
+	uint32 PacketNum
+	uint32 BadPacketNum
 )
 
-func RegisterTimeStampConn(conn *net.TCPConn, timeStamp time.Time) {
+func RegisterTimeStampAddr(conn *net.UDPAddr, timeStamp time.Time) {
 	TimeStampMap.Set(conn, timeStamp)
 }
 
-func UnRegisterTimeStampConn(conn *net.TCPConn) {
+func UnRegisterTimeStampAddr(conn *net.UDPAddr) {
 	statistic.TimeStampMap.Remove(conn)
 }
 

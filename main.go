@@ -12,12 +12,14 @@ import (
 	"log"
 )
 
+const (
+	port = ":1234"
+)
 var svr server.Server
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	svr = server.NewServer()
-	
 }
 
 func clean() {
@@ -25,7 +27,9 @@ func clean() {
 }\
 
 func main() {
-	Listener, err := net.ListenTCP("tcp", "127.0.0.1:1234")
+	udpAddr, err := net.ResolveUDPAddr("udp", port)
+	checkError(err)
+	Listener, err := net.ListenUDP("udp", udpAddr)
 	checkError(err)
 	
 	go svr.Start(Listener)

@@ -2,17 +2,20 @@ package server
 
 import (
 	"github.com/choleraehyq/gochat/statistic"
+	"github.com/choleraehyq/gochat/redismq"
 	"fmt"
 	"sync"
 	"net"
 	"time"
 	"log"
+	"os"
 )
 
 type Server struct {
 	exitCh chan bool
 	waitGroup *sync.WaitGroup
 	maxPacLen uint32
+	mq *redismq.MessageQueue
 	acceptTimeout time.Duration    
 	readTimeout time.Duration    
 	writeTimeout time.Duration  
@@ -23,7 +26,8 @@ func NewServer() *Server {
 	return &Server {
 		exitCh: make(chan bool),
 		waitGroup: &sync.WaitGroup{},
-		maxPacLen: 256,
+		maxPacLen: 2048,
+		mq: redismq.NewMessageQueue,
 		acceptTimeout: 60,
 		readTimeout:   60,
 		writeTimeout:  60,
@@ -51,7 +55,7 @@ func (this *Server) SetMaxPacLen(maxPacLen uint32) {
 	this.maxPacLen = maxPacLen
 }
 
-func (this *Server) Start(listener *net.TCPListener) {
+func (this *Server) Start(listener *net.UDPConn) {
 	log.Printf("Server start at %v\n", listener.Addr())
 	this.waitGroup.Add(1)
 	defer func(){
@@ -59,26 +63,21 @@ func (this *Server) Start(listener *net.TCPListener) {
 		this.waitGroup.Done()
 	}()
 	
+	listener.SetReadBuffer(this.maxPacLen)
 	go this.dealWithSpamConn()
+	
+	go this.sendMessage()
 	
 	for {
 		this.exitOrNot(listener)
-		listener.SetDeadline(time.Now().Add(this.acceptTimeout))
 		
-		conn, err := listener.Accept()
-		if err != nil {
-			statistic.AddCount(statistic.TryConnect, 1)
-			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				continue
-			}
-			log.Printf("Accept error: %v\n", err)
-			continue
-		}
+		var buffer []byte
+		_, addr, err := listener.ReadFromUDP(buffer)
 		
-		statistic.AddCount(statistic.ConnNum, 1)
-		statistic.RegisterConn(conn, time.Now())
-		log.Printf("Accept successfully: %v\n", conn.RemoteAddr())
-		go this.handleClientConn(conn)
+		
+		statistic.RegisterTimeStampAddr(addr, time.Now())
+		log.Printf("Accept successfully from: %v\n", addr)
+		go this.handleClientConn(buffer)
 	}	
 }
 
@@ -88,10 +87,9 @@ func (this *Server) dealWithSpamConn() {
 		items := statistic.TimeStampMap.Items()
 		for conn, timeStamp := range items {
 			if timeStamp != nil {
-				deadLine := timeStamp.(time.Time)Add(this.spamTimeout)
+				deadLine := timeStamp.(time.Time).Add(this.spamTimeout)
 				if time.Now().After(deadLine) {
 					statistic.UnRegisterTimeStampConn(conn)
-					conn.(*net.TCPConn).Close()
 				}
 			}
 		}
@@ -107,11 +105,23 @@ func (this *Server) exitOrNot(listener *net.TCPListener) {
 	}
 }
 
-func (this *Server) handleClientConn(conn *net.TCPConn) {
+func (this *Server) handleClientConn(buffer []byte) {
+	//protobuf decode
+	//push in mq 
+}
+
+func (this *Server) sendMessage() {
 	
 }
 
 func (this *Server) Stop() {
 	close(this.exitCh)
 	this.waitGroup.Wait()
+}
+
+func checkError(err error) {
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 }
