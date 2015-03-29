@@ -1,0 +1,12 @@
+package msgproto;
+
+message SendMsg {
+	required string MsgFrom = 1;
+	required string MsgSendTo = 2;
+	required string MsgType = 3;
+	required string MsgContent = 4;
+}
+
+message ReplyMsg {
+	required bool Isok = 1;
+}

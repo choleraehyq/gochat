@@ -16,11 +16,15 @@ var (
 )
 
 func RegisterTimeStampAddr(conn *net.UDPAddr, timeStamp time.Time) {
-	TimeStampMap.Set(conn, timeStamp)
+	TimeStampMap.Pur(conn, timeStamp)
 }
 
 func UnRegisterTimeStampAddr(conn *net.UDPAddr) {
 	statistic.TimeStampMap.Remove(conn)
+}
+
+func UpdateTimeStampAddr(conn *net.UDPAddr, timeStamp time.Time) {
+	TimeStampMap.Put(conn, timeStamp)
 }
 
 func AddCount(status, count uint32) {

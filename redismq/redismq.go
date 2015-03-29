@@ -25,6 +25,6 @@ func (this *MessageQueue) Enqueue(buffer []byte) error {
 }
 
 func (this *MessageQueue) GetMessage() ([]byte, error) {
-	ret, err := this.conn.Do("BRPOP", "queue")
+	ret, err := this.conn.Do("BRPOP", "queue", 1) //if timeout return ret == nil
 	return ret.([]byte), err
 }
